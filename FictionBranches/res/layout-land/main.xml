@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="5dp" >
+
+    <TextView
+        android:id="@+id/chapterTitle"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:background="#404040"
+        android:padding="5dp"
+        android:text="Next chapters"
+        android:textSize="10sp" />
+
+    <ListView
+        android:id="@+id/childList"
+        android:layout_width="200dp"
+        android:layout_marginTop="5dp"
+        android:layout_below="@id/chapterTitle"
+        android:layout_height="fill_parent" />
+
+    <ImageView
+        android:id="@+id/divider"
+        android:layout_width="2dp"
+        android:layout_height="fill_parent"
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
+        android:layout_toRightOf="@id/childList"
+        android:background="#404040" />
+
+    <RelativeLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_toRightOf="@id/divider" >
+
+        <TableRow
+            android:id="@+id/tableRow2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true" >
+
+            <com.google.ads.AdView
+                xmlns:ads="http://schemas.android.com/apk/lib/com.google.ads"
+                android:id="@+id/ad"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                ads:adSize="BANNER"
+                ads:adUnitId="a151e482cf1bbbf" />
+        </TableRow>
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/subtitleText"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/titleText"
+            android:textSize="10sp" />
+
+        <ScrollView
+            android:id="@+id/contentContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_above="@id/tableRow2"
+            android:layout_below="@id/subtitleText"
+            android:layout_marginBottom="5dp" >
+
+            <TextView
+                android:id="@+id/descriptionText"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp" />
+        </ScrollView>
+    </RelativeLayout>
+
+</RelativeLayout>

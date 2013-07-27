@@ -1,0 +1,18 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item
+        android:id="@+id/main_chapter"
+        android:showAsAction="never"
+        android:title="Main Chapter"/>
+
+    <item
+        android:id="@+id/unread_chapters"
+        android:showAsAction="never"
+        android:title="Unread Chapters"/>
+
+    <item
+        android:id="@+id/latest_chapters"
+        android:showAsAction="never"
+        android:title="Latest Chapter"/>
+
+    
+</menu>

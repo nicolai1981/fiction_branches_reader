@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical"
+    android:padding="5dp" >
+
+    <TextView
+        android:id="@+id/chapterTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#404040"
+        android:padding="5dp"
+        android:text="New Chapters In 0 Days"
+        android:textSize="10sp" />
+
+    <ListView
+        android:id="@+id/childList"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_marginTop="5dp" >
+    </ListView>
+
+</LinearLayout>

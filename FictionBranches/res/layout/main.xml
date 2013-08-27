@@ -16,7 +16,7 @@
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             ads:adSize="BANNER"
-            ads:adUnitId="a151e482cf1bbbf" />
+            ads:adUnitId="ca-app-pub-1647159480625524/1006938892" />
     </TableRow>
 
     <TextView

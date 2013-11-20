@@ -30,60 +30,49 @@ public class ClientParser {
         int endIndex = 0;
 
         chapter.mPage = page;
-        chapter.mParent = parent;
 
-        // Get title
+        // Get chapter title
         currentIndex = html.indexOf("<H1>", endIndex) + 4;
         endIndex = html.indexOf("</H1>", currentIndex);
         chapter.mTitle = html.substring(currentIndex, endIndex);
+        currentIndex = endIndex;
 
-        // Get subtitle
-        currentIndex = html.indexOf("<br>", endIndex) + 4;
+        // Get chapter information
+        currentIndex = html.indexOf("<br>", currentIndex) + 4;
         endIndex = html.indexOf("<HR>", currentIndex);
+
         String subTitle = html.substring(currentIndex, endIndex);
         if (subTitle.length() > 0) {
-            int startDate = subTitle.indexOf(" on ") + 4;
-            int endDate = subTitle.indexOf("<br>", startDate);
+            // Get author
+            int startContent = subTitle.indexOf(" submitted by ") + 14;
+            int endContent = 0;
+            if ((subTitle.charAt(startContent) == '<') && (subTitle.charAt(startContent + 1) == 'A')) {
+                startContent = subTitle.indexOf(">") + 1;
+                endContent = subTitle.indexOf("</", startContent);
+            } else {
+                endContent = subTitle.indexOf(" on ", startContent);
+            }
+            chapter.mAuthor = subTitle.substring(startContent, endContent);
+
+            // Get chapter date
+            startContent = subTitle.indexOf(" on ", startContent) + 4;
+            endContent = subTitle.indexOf("<br>", startContent);
             try {
-                chapter.mDate = sChapterDateFormatter.parse(subTitle.substring(startDate, endDate)).getTime();
+                chapter.mDate = sChapterDateFormatter.parse(subTitle.substring(startContent, endContent)).getTime();
             } catch (ParseException e) {
                 chapter.mDate = 0; 
             }
 
-            int start = subTitle.indexOf("<A");
-            int end = subTitle.indexOf("</A>");
-            if ((start > 0) && (start < startDate)) {
-                start = subTitle.indexOf(">", start);
-                chapter.mAuthor = subTitle.substring(start + 1, end);
+            // Get parent chapter
+            startContent = subTitle.indexOf("page=", startContent) + 5;
+            if (startContent > 0) {
+                endContent = subTitle.indexOf("&", startContent);
+                if (endContent < 0) {
+                    endContent = subTitle.indexOf("\"", startContent);
+                }
+                chapter.mParent = subTitle.substring(startContent, endContent);
             } else {
-                start = subTitle.indexOf("submitted by ") + 13;
-                end = subTitle.indexOf(" on ", start);
-                if (start > 0) {
-                    chapter.mAuthor = subTitle.substring(start, end);
-                }
-            }
-
-            // Get parent
-            if ((parent == null) && !"root".equals(page)) {
-                start = subTitle.indexOf("?page=", start) + 6;
-                end = subTitle.indexOf("&", start);
-                if ((start >0) && (end > 0)) {
-                    chapter.mParent = subTitle.substring(start, end);
-
-                    // Insert back button
-                    Chapter back = new Chapter();
-                    back.mPage = chapter.mParent;
-                    back.mParent = page;
-                    back.mTitle = "BACK";
-                    back.mAuthor = " ";
-                    back.mDate = -1;
-                    if (Application.getChapterModel().getChapter(chapter.mParent) == null) {
-                        back.mRead = 0;
-                    } else {
-                        back.mRead = 1;
-                    }
-                    batch.insertChapter(back);
-                }
+                chapter.mParent = null;
             }
         }
 
@@ -97,47 +86,41 @@ public class ClientParser {
         }
         chapter.mRead = 1;
 
+        // Insert / update current chapter
         if (Application.getChapterModel().getChapter(page) == null) {
             Application.getChapterModel().insertChapter(chapter);
         } else {
             Application.getChapterModel().updateChapter(chapter);
         }
-
         result.mData = chapter;
 
-        // Get links
-        while ((html.indexOf("<A href=\"storypage.pl?page=", endIndex) > 0) || (html.indexOf("<A href=\"fbstorypage.pl?page=", endIndex) > 0)) {
+        // Get chapter child
+        currentIndex = endIndex + 4;
+        endIndex = html.indexOf("</P>", currentIndex);
+        String linkList = html.substring(currentIndex, endIndex);
+        currentIndex = linkList.indexOf("page=");
+        while (currentIndex > 0) {
             Chapter child = new Chapter();
-            currentIndex = html.indexOf("<A href=\"storypage.pl?page=", endIndex);
-            if (currentIndex < 0) {
-                currentIndex = html.indexOf("<A href=\"fbstorypage.pl?page=", endIndex) + 29;
-            } else {
-                currentIndex += 27;
-            }
-            endIndex = html.indexOf("\">", currentIndex);
-            child.mPage = html.substring(currentIndex, endIndex);
-            child.mParent = page;
+            child.mParent = chapter.mPage;
             child.mRead = 0;
 
-            currentIndex = endIndex + 2;
-            endIndex = html.indexOf("</A>", currentIndex);
-            child.mTitle = html.substring(currentIndex, endIndex);
-
-            if (Application.getChapterModel().getChapter(child.mPage) == null) {
-                batch.insertChapter(child);
-
-                if (Application.getChapterModel().getBackChapter(child.mParent) == null) {
-                    // Insert back button
-                    Chapter back = new Chapter();
-                    back.mPage = child.mParent;
-                    back.mParent = child.mPage;
-                    back.mTitle = "BACK";
-                    back.mAuthor = " ";
-                    back.mDate = -1;
-                    back.mRead = 1;
-                    batch.insertChapter(back);
-                }
+            // Get child page
+            currentIndex += 5;
+            endIndex = linkList.indexOf("\">", currentIndex);
+            int temp = linkList.indexOf("&", currentIndex);
+            if ((temp > 0) && (temp < endIndex)) {
+                endIndex = temp;
             }
+            child.mParent = linkList.substring(currentIndex, endIndex);
+
+            // Get child title
+            currentIndex = linkList.indexOf("\">", endIndex) + 2;
+            endIndex = html.indexOf("</A", currentIndex);
+            child.mTitle = linkList.substring(currentIndex, endIndex);
+
+            batch.insertChapter(child);
+
+            currentIndex = linkList.indexOf("page=", endIndex);
         }
         batch.flush();
 

@@ -4,7 +4,7 @@ import android.util.Log;
 
 public class Logger {
 
-    public static final boolean ENABLED = false;
+    public static final boolean ENABLED = true;
 
     private final String  mTag;
     private final boolean mEnabled;

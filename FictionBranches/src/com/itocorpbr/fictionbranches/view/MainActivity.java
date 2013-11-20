@@ -81,6 +81,7 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
         mChapterList.setOnItemClickListener(new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                /*
                 Chapter chapter = mAdapter.getItem(position);
                 if ("BACK".equals(chapter.mTitle) && (chapter.mRead == 1)) {
                     chapter = Application.getChapterModel().getChapter(chapter.mPage);
@@ -118,6 +119,7 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
 
                 getLoaderManager().restartLoader(0, null, MainActivity.this);
                 Application.getAccountModel().setLastChapter(mPage);
+                */
             }
         });
 

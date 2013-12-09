@@ -43,7 +43,7 @@ public class ChapterModel extends DatabaseTable {
     /**
      * Sort criteria for all queries.
      */
-    private static final String ORDER_BY = COLUMN_DATE;
+    private static final String ORDER_BY = _ID;
 
     /**
      * SQL statement to create the table.
@@ -80,14 +80,6 @@ public class ChapterModel extends DatabaseTable {
 
     public Chapter getChapter(String page) {
         Cursor cursor = query(PROJECTION, COLUMN_PAGE + "='" + page + "' AND " + COLUMN_TITLE + "!='BACK'", null, ORDER_BY);
-        if (cursor.moveToFirst()) {
-            return toChapter(cursor);
-        }
-        return null;
-    }
-
-    public Chapter getBackChapter(String page) {
-        Cursor cursor = query(PROJECTION, COLUMN_PAGE + "='" + page + "' AND " + COLUMN_TITLE + "='BACK'", null, ORDER_BY);
         if (cursor.moveToFirst()) {
             return toChapter(cursor);
         }
@@ -176,20 +168,16 @@ public class ChapterModel extends DatabaseTable {
             });
         }
 
-        public void insertChapter(final Chapter chapter) {
+        public void insertUpdateChapter(final Chapter chapter) {
             addOperation(new Runnable() {
                 @Override
                 public void run() {
-                    ChapterModel.this.insertChapter(chapter);
-                }
-            });
-        }
-
-        public void updateChapter(final Chapter chapter) {
-            addOperation(new Runnable() {
-                @Override
-                public void run() {
-                    ChapterModel.this.updateChapter(chapter);
+                    Chapter oldChapter = ChapterModel.this.getChapter(chapter.mPage);
+                    if (oldChapter == null) {
+                        ChapterModel.this.insertChapter(chapter);
+                    } else if (oldChapter.mRead == 0) {
+                        ChapterModel.this.updateChapter(chapter);
+                    }
                 }
             });
         }

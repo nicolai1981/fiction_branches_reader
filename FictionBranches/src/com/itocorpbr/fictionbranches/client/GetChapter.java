@@ -11,13 +11,11 @@ import com.itocorpbr.fictionbranches.common.request.http.HttpRequest;
 public class GetChapter extends HttpRequest {
     private ClientResult mResult = null;
     private String mPage = null;
-    private String mParent = null;
 
-    public GetChapter(HttpClient httpClient, String page, String parent, HttpRequestListener listener) {
+    public GetChapter(HttpClient httpClient, String page, HttpRequestListener listener) {
         super(httpClient, listener);
         mResult = new ClientResult(REQUEST.GET_CHAPTER);
         mPage = page;
-        mParent = parent;
     }
 
     @Override
@@ -60,7 +58,7 @@ public class GetChapter extends HttpRequest {
     private boolean handleEvent(String html) {
         if (Log.ENABLED) Log.get().method();
 
-        if (!ClientParser.parseChapterRequestResult(mPage, mParent, html, mResult)) {
+        if (!ClientParser.parseChapterRequestResult(mPage, html, mResult)) {
             return false;
         }
         return true;

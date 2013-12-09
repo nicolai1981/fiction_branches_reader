@@ -17,7 +17,7 @@ public class ClientParser {
     public static final SimpleDateFormat sLatestDateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
     public static final SimpleDateFormat sChapterDateFormatter = new SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy", Locale.US);
 
-    public static boolean parseChapterRequestResult(String page, String parent, String html, ClientResult result) {
+    public static boolean parseChapterRequestResult(String page, String html, ClientResult result) {
         if (html == null) {
             return false;
         }
@@ -64,8 +64,9 @@ public class ClientParser {
             }
 
             // Get parent chapter
-            startContent = subTitle.indexOf("page=", startContent) + 5;
+            startContent = subTitle.indexOf("page=", startContent);
             if (startContent > 0) {
+                startContent += 5;
                 endContent = subTitle.indexOf("&", startContent);
                 if (endContent < 0) {
                     endContent = subTitle.indexOf("\"", startContent);
@@ -87,11 +88,48 @@ public class ClientParser {
         chapter.mRead = 1;
 
         // Insert / update current chapter
-        if (Application.getChapterModel().getChapter(page) == null) {
+        Chapter oldChapter = Application.getChapterModel().getChapter(page);
+        if (oldChapter == null) {
             Application.getChapterModel().insertChapter(chapter);
+
+            // Add BACK
+            if (!page.equals("root")) {
+                Chapter back = new Chapter();
+                back.mTitle = "BACK";
+                back.mParent = chapter.mPage;
+                back.mPage = chapter.mParent;
+                if (Application.getChapterModel().getChapter(chapter.mParent) == null) {
+                    back.mRead = 0;
+                } else {
+                    back.mRead = 1;
+                }
+                Application.getChapterModel().insertChapter(back);
+            }
         } else {
+            // Add BACK
+            if (oldChapter.mRead == 0) {
+                Chapter back = new Chapter();
+                back.mTitle = "BACK";
+                back.mParent = chapter.mPage;
+                back.mPage = chapter.mParent;
+                Chapter parent = Application.getChapterModel().getChapter(chapter.mParent);
+                if (parent == null) {
+                    back.mRead = 0;
+                } else {
+                    back.mRead = 1;
+                    back.mAuthor = parent.mTitle;
+                }
+                Application.getChapterModel().insertChapter(back);
+            }
+
+            if ((oldChapter.mRead == 0) && !oldChapter.mTitle.equals(chapter.mTitle)) {
+                chapter.mTitle = oldChapter.mTitle + " (" + chapter.mTitle + ")";
+            } else {
+                chapter.mTitle = oldChapter.mTitle;
+            }
             Application.getChapterModel().updateChapter(chapter);
         }
+
         result.mData = chapter;
 
         // Get chapter child
@@ -111,14 +149,14 @@ public class ClientParser {
             if ((temp > 0) && (temp < endIndex)) {
                 endIndex = temp;
             }
-            child.mParent = linkList.substring(currentIndex, endIndex);
+            child.mPage = linkList.substring(currentIndex, endIndex);
 
             // Get child title
-            currentIndex = linkList.indexOf("\">", endIndex) + 2;
-            endIndex = html.indexOf("</A", currentIndex);
+            currentIndex = linkList.indexOf(">", endIndex) + 1;
+            endIndex = linkList.indexOf("</A", currentIndex);
             child.mTitle = linkList.substring(currentIndex, endIndex);
 
-            batch.insertChapter(child);
+            batch.insertUpdateChapter(child);
 
             currentIndex = linkList.indexOf("page=", endIndex);
         }

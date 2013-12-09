@@ -12,9 +12,9 @@ public class Client {
         mHttpClient = new HttpClient();
     }
 
-    public void getChapter(String page, String parent, HttpRequestListener listener) {
+    public void getChapter(String page, HttpRequestListener listener) {
         if (Log.ENABLED) Log.get().method();
-        new GetChapter(mHttpClient, page, parent, listener).start();
+        new GetChapter(mHttpClient, page, listener).start();
     }
 
     public void getLatestChapter(int days, HttpRequestListener listener) {

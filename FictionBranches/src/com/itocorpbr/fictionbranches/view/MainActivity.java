@@ -51,12 +51,9 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
     private TextView mContent;
     private ScrollView mContentScroll;
     private ListView mChapterList;
-    private MyCursorAdapter mAdapter = null;
+    private ChapterAdapter mAdapter = null;
     private ProgressDialog mProgress = null;
-    private boolean mIsDownload = false;
-
-    private static Chapter sChapter = null;
-    private String mPage = "root";
+    private boolean mProcessHttpRequest = false;
 
     /** Called when the activity is first created. */
     @Override
@@ -76,69 +73,49 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
         mContentScroll = (ScrollView) findViewById(R.id.contentContainer);
 
         mChapterList = (ListView) findViewById(R.id.childList);
-        mAdapter = new MyCursorAdapter();
+        mAdapter = new ChapterAdapter();
         mChapterList.setAdapter(mAdapter);
         mChapterList.setOnItemClickListener(new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                /*
+                startProgress();
+
                 Chapter chapter = mAdapter.getItem(position);
-                if ("BACK".equals(chapter.mTitle) && (chapter.mRead == 1)) {
-                    chapter = Application.getChapterModel().getChapter(chapter.mPage);
-                }
                 if (chapter.mRead == 0) {
                     if (HttpRequest.isOnline()) {
-                        mPage = chapter.mPage;
-                        mIsDownload = true;
-                        if ("BACK".equals(chapter.mTitle)) {
-                            chapter.mRead = 1;
-                            Application.getChapterModel().updateBackChapter(chapter);
-                            Application.getClient().getChapter(chapter.mPage, null, MainActivity.this);
-                        } else {
-                            Application.getClient().getChapter(chapter.mPage, chapter.mParent, MainActivity.this);
-                        }
+                        mProcessHttpRequest = true;
+                        Application.getClient().getChapter(chapter.mPage, MainActivity.this);
                     } else {
                         createDialogInternetConnection();
                     }
                 } else {
-                    sChapter = chapter;
-                    mTitle.setText(sChapter.mTitle);
-                    mSubTitle.setText("Author: " + sChapter.mAuthor + " - " + sFormatter.format(new Date(sChapter.mDate)));
-                    mContent.setText(sChapter.mContent);
-                    mPage = sChapter.mPage;
-
+                    updateScreen(chapter);
                     if (HttpRequest.isOnline()) {
-                        Application.getClient().getChapter(sChapter.mPage, sChapter.mParent, null);
+                        Application.getClient().getChapter(chapter.mPage, null);
                     }
                 }
-
-                if (mContentScroll != null) {
-                    mContentScroll.fullScroll(View.FOCUS_UP);
-                }
-                mChapterList.smoothScrollToPosition(0);
-
-                getLoaderManager().restartLoader(0, null, MainActivity.this);
-                Application.getAccountModel().setLastChapter(mPage);
-                */
             }
         });
 
-        mPage = Application.getAccountModel().getLastChapter();
-
-        sChapter = Application.getChapterModel().getChapter(mPage);
-        if ((sChapter == null) || (sChapter.mRead == 0)) {
-            mIsDownload = true;
-            if (sChapter == null) {
-                Application.getClient().getChapter(mPage, null, this);
+        String lastPage = Application.getAccountModel().getLastChapter();
+        Chapter chapter = Application.getChapterModel().getChapter(lastPage);
+        if ((chapter == null) || (chapter.mRead == 0)) {
+            if (HttpRequest.isOnline()) {
+                mProcessHttpRequest = true;
+                Application.getClient().getChapter(lastPage, this);
             } else {
-                Application.getClient().getChapter(mPage, sChapter.mParent, this);
+                createDialogInternetConnection();
             }
         } else {
-            mTitle.setText(sChapter.mTitle);
-            mSubTitle.setText("Author: " + sChapter.mAuthor + " - " + sFormatter.format(new Date(sChapter.mDate)));
-            mContent.setText(sChapter.mContent);
+            mTitle.setText(chapter.mTitle);
+            mSubTitle.setText("Author: " + chapter.mAuthor + " - " + sFormatter.format(new Date(chapter.mDate)));
+            mContent.setText(chapter.mContent);
+            if (HttpRequest.isOnline()) {
+                Application.getClient().getChapter(lastPage, null);
+            }
         }
 
+        startProgress();
         getLoaderManager().initLoader(0, null, this);
     }
 
@@ -158,20 +135,14 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
 
     @Override
     public void onPause() {
-        if (mProgress != null) {
-            mProgress.dismiss();
-            mProgress = null;
-        }
+        endProgress();
         super.onPause();
     }
 
     @Override
     public void onHttpRequestFinished(ClientResult result) {
-        if (mProgress != null) {
-            mProgress.dismiss();
-            mProgress = null;
-            mIsDownload = false;
-        }
+        endProgress();
+        mProcessHttpRequest = false;
 
         if (result.mData == null) {
             return;
@@ -179,33 +150,23 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
 
         switch (result.mReqId) {
         case GET_CHAPTER:
-            sChapter = (Chapter) result.mData;
-            mTitle.setText(sChapter.mTitle);
-            mSubTitle.setText("Author: " + sChapter.mAuthor + " - " + sFormatter.format(new Date(sChapter.mDate)));
-            mContent.setText(sChapter.mContent);
+            updateScreen((Chapter) result.mData);
+            break;
+        default:
             break;
         }
     }
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        if ((mProgress != null) && !mIsDownload) {
-            mProgress.dismiss();
-        }
-        mProgress = new ProgressDialog(this);
-        mProgress.setMessage("Loading...");
-        mProgress.show();
-
-        return new MyLoader(Application.getContext(), mPage);
+        return new ChapterLoader(Application.getContext());
     }
 
     @Override
     public void onLoadFinished(Loader<Cursor> paramLoader, Cursor cursor) {
-        if ((mProgress != null) && !mIsDownload) {
-            mProgress.dismiss();
-            mProgress = null;
+        if (!mProcessHttpRequest) {
+            endProgress();
         }
-
         mAdapter.swapCursor(cursor);
     }
 
@@ -216,21 +177,19 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
         }
     }
 
-    private static class MyLoader extends CursorLoader {
-        private String mText = null;
-
-        public MyLoader(Context context, String text) {
+    private static class ChapterLoader extends CursorLoader {
+        public ChapterLoader(Context context) {
             super(context);
-            mText = text;
         }
 
         public Cursor doQuery() {
-            return Application.getChapterModel().getChildList(mText);
+            String parent = Application.getAccountModel().getLastChapter();
+            return Application.getChapterModel().getChildList(parent);
         }
     }
 
-    private static class MyCursorAdapter extends CursorAdapter {
-        public MyCursorAdapter() {
+    private static class ChapterAdapter extends CursorAdapter {
+        public ChapterAdapter() {
             super(Application.getContext(), null, 0);
         }
 
@@ -342,11 +301,12 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
 
         switch (item.getItemId()) {
         case R.id.main_chapter:
-            Application.getAccountModel().setLastChapter("root");
-            intent = new Intent(this, MainActivity.class);
-            startActivity(intent);
-            finish();
-            break;
+            startProgress();
+            updateScreen(Application.getChapterModel().getChapter("root"));
+            if (HttpRequest.isOnline()) {
+                Application.getClient().getChapter("root", null);
+            }
+           break;
         case R.id.unread_chapters:
             intent = new Intent(this, UnreadListActivity.class);
             startActivity(intent);
@@ -357,5 +317,71 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
             break;
         }
         return true;
+    }
+
+    private void startProgress() {
+        endProgress();
+        mProgress = new ProgressDialog(this);
+        mProgress.setMessage("Loading...");
+        mProgress.show();
+    }
+
+    private void endProgress() {
+        if (mProgress != null) {
+            mProgress.dismiss();
+            mProgress = null;
+        }
+
+        if (mContentScroll != null) {
+            mContentScroll.fullScroll(View.FOCUS_UP);
+        }
+        mChapterList.smoothScrollToPosition(0);
+    }
+
+    private void updateScreen(Chapter chapter) {
+        Chapter nextChapter = chapter;
+        if (chapter.mTitle.equals("BACK")) {
+            nextChapter = Application.getChapterModel().getChapter(chapter.mPage);
+        }
+        mTitle.setText(nextChapter.mTitle);
+        mSubTitle.setText("Author: " + nextChapter.mAuthor + " - " + sFormatter.format(new Date(nextChapter.mDate)));
+        mContent.setText(nextChapter.mContent);
+
+        Application.getAccountModel().setLastChapter(nextChapter.mPage);
+        getLoaderManager().restartLoader(0, null, MainActivity.this);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (mProgress != null) {
+            return;
+        }
+
+        String currentPage = Application.getAccountModel().getLastChapter();
+        if (currentPage.equals("root")) {
+            super.onBackPressed();
+        }
+
+        startProgress();
+
+        Chapter chapter = Application.getChapterModel().getChapter(currentPage);
+        Chapter parentChapter = Application.getChapterModel().getChapter(chapter.mParent);
+        if ((parentChapter == null) || (parentChapter.mRead == 0)) {
+            if (HttpRequest.isOnline()) {
+                mProcessHttpRequest = true;
+                if (parentChapter == null) {
+                    Application.getClient().getChapter(chapter.mParent, MainActivity.this);
+                } else {
+                    Application.getClient().getChapter(parentChapter.mPage, MainActivity.this);
+                }
+            } else {
+                createDialogInternetConnection();
+            }
+       } else {
+           updateScreen(parentChapter);
+           if (HttpRequest.isOnline()) {
+               Application.getClient().getChapter(parentChapter.mPage, null);
+           }
+        }
     }
 }

@@ -78,12 +78,18 @@ public class ChapterModel extends DatabaseTable {
         return query(PROJECTION, COLUMN_READ + "=0", null, null);
     }
 
+    public Cursor getChapterCursor(String page) {
+        return query(PROJECTION, COLUMN_PAGE + "='" + page + "' AND " + COLUMN_TITLE + "!='BACK'", null, ORDER_BY);
+    }
+
     public Chapter getChapter(String page) {
+        Chapter chapter = null;
         Cursor cursor = query(PROJECTION, COLUMN_PAGE + "='" + page + "' AND " + COLUMN_TITLE + "!='BACK'", null, ORDER_BY);
         if (cursor.moveToFirst()) {
-            return toChapter(cursor);
+            chapter = toChapter(cursor);
         }
-        return null;
+        cursor.close();
+        return chapter;
     }
 
     public boolean updateChapter(Chapter chapter) {

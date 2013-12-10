@@ -42,7 +42,11 @@ import com.itocorpbr.fictionbranches.model.Chapter;
 import com.itocorpbr.fictionbranches.model.ChapterModel;
 
 public class MainActivity extends Activity implements HttpRequestListener, LoaderCallbacks<Cursor> {
-    public static final SimpleDateFormat sFormatter = new SimpleDateFormat("MMM dd yyyy", Locale.US);
+    private static final int CHAPTER_HEADER_LOADER_ID = 0;
+    private static final int CHAPTER_CONTENT_LOADER_ID = 1;
+    private static final int CHAPTER_CHILD_LOADER_ID = 2;
+
+    private static final SimpleDateFormat sFormatter = new SimpleDateFormat("MMM dd yyyy", Locale.US);
 
     /** The view to show the ad. */
     private AdView adView;
@@ -107,23 +111,24 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
                 createDialogInternetConnection();
             }
         } else {
-            mTitle.setText(chapter.mTitle);
-            mSubTitle.setText("Author: " + chapter.mAuthor + " - " + sFormatter.format(new Date(chapter.mDate)));
-            mContent.setText(chapter.mContent);
             if (HttpRequest.isOnline()) {
                 Application.getClient().getChapter(lastPage, null);
             }
         }
 
         startProgress();
-        getLoaderManager().initLoader(0, null, this);
+        getLoaderManager().initLoader(CHAPTER_HEADER_LOADER_ID, null, this);
+        getLoaderManager().initLoader(CHAPTER_CONTENT_LOADER_ID, null, this);
+        getLoaderManager().initLoader(CHAPTER_CHILD_LOADER_ID, null, this);
     }
 
     /** Called before the activity is destroyed. */
     @Override
     public void onDestroy() {
         mAdapter = null;
-        getLoaderManager().destroyLoader(0);
+        getLoaderManager().destroyLoader(CHAPTER_HEADER_LOADER_ID);
+        getLoaderManager().destroyLoader(CHAPTER_CONTENT_LOADER_ID);
+        getLoaderManager().destroyLoader(CHAPTER_CHILD_LOADER_ID);
 
         // Destroy the AdView.
         if (adView != null) {
@@ -159,26 +164,87 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        return new ChapterLoader(Application.getContext());
+        switch (id) {
+        case CHAPTER_HEADER_LOADER_ID:
+            return new ChapterHeaderLoader(Application.getContext());
+        case CHAPTER_CONTENT_LOADER_ID:
+            return new ChapterContentLoader(Application.getContext());
+        case CHAPTER_CHILD_LOADER_ID:
+            return new ChapterChildLoader(Application.getContext());
+        }
+        return null;
     }
 
     @Override
     public void onLoadFinished(Loader<Cursor> paramLoader, Cursor cursor) {
-        if (!mProcessHttpRequest) {
-            endProgress();
+        switch (paramLoader.getId()) {
+        case CHAPTER_HEADER_LOADER_ID:
+            if (cursor.moveToFirst()) {
+                Chapter chapter = ChapterModel.toChapter(cursor);
+                mTitle.setText(chapter.mTitle);
+                mSubTitle.setText("Author: " + chapter.mAuthor + " - " + sFormatter.format(new Date(chapter.mDate)));
+            }
+            cursor.close();
+            break;
+        case CHAPTER_CONTENT_LOADER_ID:
+            if (cursor.moveToFirst()) {
+                Chapter chapter = ChapterModel.toChapter(cursor);
+                mContent.setText(chapter.mContent);
+            }
+            cursor.close();
+            break;
+        case CHAPTER_CHILD_LOADER_ID:
+            if (!mProcessHttpRequest) {
+                endProgress();
+            }
+            mAdapter.swapCursor(cursor);
+            break;
         }
-        mAdapter.swapCursor(cursor);
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> paramLoader) {
-        if (mAdapter != null) {
-            mAdapter.swapCursor(null);
+        switch (paramLoader.getId()) {
+        case CHAPTER_HEADER_LOADER_ID:
+            mTitle.setText(null);
+            mSubTitle.setText(null);
+            mContent.setText(null);
+            break;
+        case CHAPTER_CONTENT_LOADER_ID:
+            mContent.setText(null);
+            break;
+        case CHAPTER_CHILD_LOADER_ID:
+            if (mAdapter != null) {
+                mAdapter.swapCursor(null);
+            }
+            break;
         }
     }
 
-    private static class ChapterLoader extends CursorLoader {
-        public ChapterLoader(Context context) {
+    private static class ChapterHeaderLoader extends CursorLoader {
+        public ChapterHeaderLoader(Context context) {
+            super(context);
+        }
+
+        public Cursor doQuery() {
+            String page = Application.getAccountModel().getLastChapter();
+            return Application.getChapterModel().getChapterCursor(page);
+        }
+    }
+
+    private static class ChapterContentLoader extends CursorLoader {
+        public ChapterContentLoader(Context context) {
+            super(context);
+        }
+
+        public Cursor doQuery() {
+            String page = Application.getAccountModel().getLastChapter();
+            return Application.getChapterModel().getChapterCursor(page);
+        }
+    }
+
+    private static class ChapterChildLoader extends CursorLoader {
+        public ChapterChildLoader(Context context) {
             super(context);
         }
 
@@ -343,12 +409,11 @@ public class MainActivity extends Activity implements HttpRequestListener, Loade
         if (chapter.mTitle.equals("BACK")) {
             nextChapter = Application.getChapterModel().getChapter(chapter.mPage);
         }
-        mTitle.setText(nextChapter.mTitle);
-        mSubTitle.setText("Author: " + nextChapter.mAuthor + " - " + sFormatter.format(new Date(nextChapter.mDate)));
-        mContent.setText(nextChapter.mContent);
 
         Application.getAccountModel().setLastChapter(nextChapter.mPage);
-        getLoaderManager().restartLoader(0, null, MainActivity.this);
+        getLoaderManager().restartLoader(CHAPTER_HEADER_LOADER_ID, null, MainActivity.this);
+        getLoaderManager().restartLoader(CHAPTER_CONTENT_LOADER_ID, null, MainActivity.this);
+        getLoaderManager().restartLoader(CHAPTER_CHILD_LOADER_ID, null, MainActivity.this);
     }
 
     @Override
